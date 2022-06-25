@@ -51,15 +51,6 @@ def main():
     grd = summary_report(
         *simulate_policy(rlenv, greedy, n_periods)
     )
-
-    fig, ax = plt.subplots(figsize=(8, 6))
-    grd['Action'][:100].plot(kind='hist', ax=ax)
-    grd['Reward'][:100].plot(secondary_y=True,ax=ax)
-    plt.legend()
-    plt.title("First 100 Iterations of Greedy Policy")
-    fig.savefig(os.path.join(path, 'Figure_3.png'))
-    plt.close()
-
  
     egrd = summary_report(
         *simulate_policy(rlenv, eps_greedy, n_periods)
@@ -69,8 +60,18 @@ def main():
         *simulate_policy(rlenv, rnd_policy, n_periods)
     )
 
+    # FIGURE 1: EXP SMOOTH GRAPHS
     fig, ax = plt.subplots(figsize=(8, 6))
+    grd['Reward'].rename(greedy).ewm(alpha=ewmalpha).mean()[n_warmup:].plot()
+    egrd['Reward'].rename(eps_greedy).ewm(alpha=ewmalpha).mean()[n_warmup:].plot()
+    rpol['Reward'].rename('Random Policy').ewm(alpha=ewmalpha).mean().plot(ax=ax)    
+    plt.title('Exp Smooth Means by Policy')
+    plt.legend()
+    fig.savefig(os.path.join(path, 'Figure_1.png'))
+    plt.close()
 
+    # FIGURE 2: MOVING AVG GRAPHS
+    fig, ax = plt.subplots(figsize=(8, 6))
     grd['Reward'].rename(greedy).rolling(window=n_rolling).mean().plot(ax=ax)
     egrd['Reward'].rename(eps_greedy).rolling(window=n_rolling).mean().plot(ax=ax)
     rpol['Reward'].rename('Random Policy').rolling(window=n_rolling).mean().plot(ax=ax)
@@ -79,14 +80,13 @@ def main():
     fig.savefig(os.path.join(path, 'Figure_2.png'))
     plt.close()
 
+    # FIGURE 3: First Iterations
     fig, ax = plt.subplots(figsize=(8, 6))
-
-    grd['Reward'].rename(greedy).ewm(alpha=ewmalpha).mean()[n_warmup:].plot()
-    egrd['Reward'].rename(eps_greedy).ewm(alpha=ewmalpha).mean()[n_warmup:].plot()
-    rpol['Reward'].rename('Random Policy').ewm(alpha=ewmalpha).mean().plot(ax=ax)    
-    plt.title('Exp Smooth Means by Policy')
+    grd['Action'][:100].plot(kind='hist', ax=ax)
+    grd['Reward'][:100].plot(secondary_y=True,ax=ax)
     plt.legend()
-    fig.savefig(os.path.join(path, 'Figure_1.png'))
+    plt.title("First 100 Iterations of Greedy Policy")
+    fig.savefig(os.path.join(path, 'Figure_3.png'))
     plt.close()
 
 
