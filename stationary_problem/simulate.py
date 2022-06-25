@@ -25,11 +25,10 @@ def summary_report(actions, rewards, Q):
     )
     df = pd.DataFrame({'Action':actions, 'Reward':rewards})
     print('- Action Frequency: ',end='')
-    for t in df['Action'].value_counts(ascending=True).items():
+    for t in df['Action'].value_counts().items():
         print(t, end=' ')
     print()
     return df
-
 
 def main():
     path = 'stationary_problem'
