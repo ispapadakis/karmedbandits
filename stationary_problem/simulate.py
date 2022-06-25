@@ -29,7 +29,7 @@ def main():
     eps_greedy = EpsilonGreedy(0.01, rlenv, 5.0)
 
     n_periods = 100000
-    n_rolling = 100
+    n_rolling = 1000
     n_warmup = 1000
     ewmalpha = 0.001
 
@@ -47,13 +47,23 @@ def main():
     egrd = pd.DataFrame({'Action':actions, 'Reward':rewards})
     print(egrd['Action'].value_counts())
 
-    #grd['Reward'].rename(greedy).rolling(window=n_rolling).mean().plot()
-    #egrd['Reward'].rename(eps_greedy).rolling(window=n_rolling).mean().plot()
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    grd['Reward'].rename(greedy).rolling(window=n_rolling).mean().plot(ax=ax)
+    egrd['Reward'].rename(eps_greedy).rolling(window=n_rolling).mean().plot(ax=ax)
+    plt.title(f'Rolling Means (mem={n_rolling}) by Policy')
+    plt.legend()
+    fig.savefig(os.path.join(path, 'Figure_2.png'))
+    plt.close()
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+
     grd['Reward'].rename(greedy).ewm(alpha=ewmalpha).mean()[n_warmup:].plot()
     egrd['Reward'].rename(eps_greedy).ewm(alpha=ewmalpha).mean()[n_warmup:].plot()
     plt.title('Exp Smooth Means by Policy')
     plt.legend()
-    plt.show()
+    fig.savefig(os.path.join(path, 'Figure_1.png'))
+    plt.close()
 
 
 if __name__ == '__main__':

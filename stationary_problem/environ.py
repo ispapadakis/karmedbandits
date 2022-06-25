@@ -112,7 +112,7 @@ class EpsilonGreedy(Policy):
         return np.random.choice(self.env.get_size(), p=prob)
         
     def __repr__(self):
-        return "Epsilon Greedy Policy"
+        return "Epsilon Greedy Policy eps={:.3f}".format(self.epsilon)
 
 class Greedy(Policy):
 
