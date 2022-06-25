@@ -16,6 +16,21 @@ def simulate_policy(env, policy, n):
         Q.append(q)
     return np.array(actions), np.array(rewards), np.asarray(Q)
 
+def summary_report(actions, rewards, Q):
+    print('- Average Reward: {:.3f}'.format(rewards.mean()))
+    print(
+        '- Final Q-values: [', 
+        " ".join("{:.3f}".format(q) for q in Q[-1]),
+        ']'
+    )
+    df = pd.DataFrame({'Action':actions, 'Reward':rewards})
+    print('- Action Frequency: ',end='')
+    for t in df['Action'].value_counts(ascending=True).items():
+        print(t, end=' ')
+    print()
+    return df
+
+
 def main():
     path = 'stationary_problem'
     file = 'bandits.csv'
@@ -34,11 +49,10 @@ def main():
     n_warmup = 1000
     ewmalpha = 0.001
 
-    actions, rewards, Q = simulate_policy(rlenv, greedy, n_periods)
-    print(rewards.mean())
-    print(Q[-1])
-    grd = pd.DataFrame({'Action':actions, 'Reward':rewards})
-    print(grd['Action'].value_counts())
+    grd = summary_report(
+        *simulate_policy(rlenv, greedy, n_periods)
+    )
+
     fig, ax = plt.subplots(figsize=(8, 6))
     grd['Action'][:100].plot(kind='hist', ax=ax)
     grd['Reward'][:100].plot(secondary_y=True,ax=ax)
@@ -47,18 +61,14 @@ def main():
     fig.savefig(os.path.join(path, 'Figure_3.png'))
     plt.close()
 
-    actions, rewards, Q = simulate_policy(rlenv, eps_greedy, n_periods)
-    print(rewards.mean())
-    print(Q[-1])
-    egrd = pd.DataFrame({'Action':actions, 'Reward':rewards})
-    print(egrd['Action'].value_counts())
+ 
+    egrd = summary_report(
+        *simulate_policy(rlenv, eps_greedy, n_periods)
+    )
 
-    actions, rewards, Q = simulate_policy(rlenv, rnd_policy, n_periods)
-    print(rewards.mean())
-    print(Q[-1])
-    rpol = pd.DataFrame({'Action':actions, 'Reward':rewards})
-    print(rpol['Action'].value_counts())
-
+    rpol = summary_report(
+        *simulate_policy(rlenv, rnd_policy, n_periods)
+    )
 
     fig, ax = plt.subplots(figsize=(8, 6))
 
