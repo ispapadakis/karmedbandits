@@ -73,11 +73,8 @@ class Policy:
         return action, reward, self.Q
 
     def s_update(self):
-        try:
-            n = 1.0 / self.step_size
-        except:
-            n = 1.0
-        return 1.0 / (n + 1.0)
+        n = 1.0 if self.step_size == 0.0 else 1.0 / self.step_size
+        self.step_size = 1.0 / (n + 1.0)
 
 class EpsilonGreedy(Policy):
 

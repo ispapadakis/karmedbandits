@@ -5,7 +5,7 @@
 - Bandit(avg_reward = 1.5, std_reward = 0.1)
 - Bandit(avg_reward = 0.0, std_reward = 1.0)
 
-Optimal Values: [2.  1.5  0.0]
+Optimal Values: [2.0  1.5  0.0]
 
 
 ## Greedy Policy
@@ -26,5 +26,6 @@ Optimal Values: [2.  1.5  0.0]
     - 1:    3128
     - 2:     569
 
+![plot](Figure_3.png)
 ![plot](Figure_1.png)
 ![plot](Figure_2.png)
