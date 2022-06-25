@@ -20,7 +20,8 @@ class RLEnviron:
         """
         Add Bandit to Environment
         """
-        assert type(bandit) == Bandit
+        if type(bandit) != Bandit:
+            raise TypeError("Incorrect Bandit Type")
         self._bandits.append(bandit)
 
     def get_bandit(self, k:int):
@@ -48,11 +49,7 @@ class RLEnviron:
         """
         Get (Potenially Random) Outcome from Kth Bandit
         """
-        try:
-            out = self._bandits[k].get_reward()
-        except:
-            raise
-        return out
+        return self._bandits[k].get_reward()
 
     def opt_values(self):
         """
@@ -87,6 +84,8 @@ class Policy:
         step_size: float = 1.0
         ) -> None:
 
+        if step_size <= 0.0 or step_size > 1.0:
+            raise ValueError("step_size is out of range")
         self.env = env
         self.Q = np.array([initial_value for _ in range(env.get_size())])
         self.step_size = step_size
@@ -128,8 +127,11 @@ class EpsilonGreedy(Policy):
         ) -> None:
         super().__init__(env, initial_value, step_size)
 
-        assert self.env.get_size() > 1
-        assert epsilon > 0 and epsilon < 1.0
+        if self.env.get_size() < 1:
+            raise RuntimeError("Environment is Empty")
+        if epsilon <= 0 or epsilon > 1.0:
+            raise ValueError("Epsilon is Out of Range")
+
         self.epsilon = epsilon
 
         self.default_prob = np.ones(self.env.get_size()) 
