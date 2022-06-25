@@ -3,28 +3,51 @@ import os
 import pandas as pd
 
 class RLEnviron:
+    """
+    K Armed Bandits
+    Reinforcement Learning Environment
+    """
+
     def __init__(self, bandits_file: str) -> None:
+        """
+        Initialize Bandits from .csv File
+        """
         self._bandits = []
         for _, row in pd.read_csv(bandits_file).iterrows():
             self.addBandit(Bandit(**row))
 
     def addBandit(self, bandit):
+        """
+        Add Bandit to Environment
+        """
         assert type(bandit) == Bandit
         self._bandits.append(bandit)
 
     def get_bandit(self, k:int):
+        """
+        Get Index k Bandit
+        """
         return self._bandits[k]
         
     def get_size(self):
+        """
+        Get Number of Bandits in Enviroment
+        """
         return len(self._bandits)
 
     def __repr__(self) -> str:
+        """
+        Multiline Representation of Environment
+        """
         out = "RL Environment:\n"
         for b in self._bandits:
             out += str(b) + "\n"
         return out
 
     def k_outcome(self, k:int):
+        """
+        Get (Potenially Random) Outcome from Kth Bandit
+        """
         try:
             out = self._bandits[k].get_reward()
         except:
@@ -32,9 +55,16 @@ class RLEnviron:
         return out
 
     def opt_values(self):
+        """
+        True Bandit Values
+        """
         return np.array([b.params['loc'] for b in self._bandits])
 
 class Bandit:
+    """
+    Bandit With Normally Distributed Reward
+    """
+
     def __init__(self, avg_reward:float, std_reward:float) -> None:
         self.params = {'loc':avg_reward, 'scale':std_reward}
 
@@ -46,8 +76,13 @@ class Bandit:
         return fmt.format(**self.params)
 
 class Policy:
+    """
+    Policy to Select Actions Given Environment
+    """
+
     def __init__(
-        self, env: RLEnviron, 
+        self, 
+        env: RLEnviron, 
         initial_value: float, 
         step_size: float = 1.0
         ) -> None:
@@ -80,6 +115,9 @@ class Policy:
         return "Random Action Policy"
 
 class EpsilonGreedy(Policy):
+    """
+    Epsilon Greedy Policy Sub-Class
+    """
 
     def __init__(
         self, 
@@ -115,6 +153,9 @@ class EpsilonGreedy(Policy):
         return "Epsilon Greedy Policy eps={:.3f}".format(self.epsilon)
 
 class Greedy(Policy):
+    """
+    Greedy Policy Sub-Class
+    """
 
     def select_action(self):
         max = self.Q.max()
