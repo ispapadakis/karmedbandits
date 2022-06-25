@@ -16,6 +16,24 @@ def simulate_policy(env, policy, n):
         Q.append(q)
     return np.array(actions), np.array(rewards), np.asarray(Q)
 
+<<<<<<< Updated upstream
+=======
+def summary_report(actions, rewards, Q):
+    print('- Average Reward: {:.3f}'.format(rewards.mean()))
+    print(
+        '- Final Q-values: [', 
+        " ".join("{:.3f}".format(q) for q in Q[-1]),
+        ']'
+    )
+    df = pd.DataFrame({'Action':actions, 'Reward':rewards})
+    print('- Action Frequency: ',end='')
+    for t in df['Action'].value_counts().items():
+        print(t, end=' ')
+    print()
+    return df
+
+
+>>>>>>> Stashed changes
 def main():
     path = 'stationary_problem'
     file = 'bandits.csv'

@@ -10,21 +10,21 @@ Optimal Values: [2.  1.5  0.0]
 
 ## Greedy Policy
 
-- Average Reward: 1.983
-- Final Q-values: [2.16 1.14 1.03]
-- Action Frequency:
-    - 0:   96487
-    - 1:    3512
-    - 2:       1
-
+- Average Reward: 2.000
+- Final Q-values: [ 2.001 1.504 1.997 ]
+- Action Frequency: (1, 1) (2, 24) (0, 99975) 
 
 ## Epsilon Greedy Policy (eps=0.1)
-- Average Reward: 1.974
-- Final Q-values: [1.64 1.36 1.39]
-- Action Frequency
-    - 0:   96303
-    - 1:    3128
-    - 2:     569
+
+- Average Reward: 1.987
+- Final Q-values: [ 2.001 1.993 -0.135 ]
+- Action Frequency: (2, 529) (1, 619) (0, 98852)
+
+## Random Action Policy
+
+- Average Reward: 1.168
+- Final Q-values: [ 2.005 1.619 0.170 ]
+- Action Frequency: (0, 33169) (2, 33318) (1, 33513) 
 
 ![plot](Figure_1.png)
 ![plot](Figure_2.png)
