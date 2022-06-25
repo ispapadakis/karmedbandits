@@ -16,8 +16,6 @@ def simulate_policy(env, policy, n):
         Q.append(q)
     return np.array(actions), np.array(rewards), np.asarray(Q)
 
-<<<<<<< Updated upstream
-=======
 def summary_report(actions, rewards, Q):
     print('- Average Reward: {:.3f}'.format(rewards.mean()))
     print(
@@ -32,8 +30,6 @@ def summary_report(actions, rewards, Q):
     print()
     return df
 
-
->>>>>>> Stashed changes
 def main():
     path = 'stationary_problem'
     file = 'bandits.csv'
@@ -45,30 +41,39 @@ def main():
 
     greedy = Greedy(rlenv, 5.0)
     eps_greedy = EpsilonGreedy(0.01, rlenv, 5.0)
+    rnd_policy = Policy(rlenv, 5.0)
 
     n_periods = 100000
     n_rolling = 1000
     n_warmup = 1000
     ewmalpha = 0.001
 
-    actions, rewards, Q = simulate_policy(rlenv, greedy, n_periods)
-    print(rewards.mean())
-    print(Q[-1])
-    grd = pd.DataFrame({'Action':actions, 'Reward':rewards})
-    print(grd['Action'].value_counts())
-    #grd['Action'].plot()
-    #grd['Reward'].plot(secondary_y=True)
+    grd = summary_report(
+        *simulate_policy(rlenv, greedy, n_periods)
+    )
 
-    actions, rewards, Q = simulate_policy(rlenv, eps_greedy, n_periods)
-    print(rewards.mean())
-    print(Q[-1])
-    egrd = pd.DataFrame({'Action':actions, 'Reward':rewards})
-    print(egrd['Action'].value_counts())
+    fig, ax = plt.subplots(figsize=(8, 6))
+    grd['Action'][:100].plot(kind='hist', ax=ax)
+    grd['Reward'][:100].plot(secondary_y=True,ax=ax)
+    plt.legend()
+    plt.title("First 100 Iterations of Greedy Policy")
+    fig.savefig(os.path.join(path, 'Figure_3.png'))
+    plt.close()
+
+ 
+    egrd = summary_report(
+        *simulate_policy(rlenv, eps_greedy, n_periods)
+    )
+
+    rpol = summary_report(
+        *simulate_policy(rlenv, rnd_policy, n_periods)
+    )
 
     fig, ax = plt.subplots(figsize=(8, 6))
 
     grd['Reward'].rename(greedy).rolling(window=n_rolling).mean().plot(ax=ax)
     egrd['Reward'].rename(eps_greedy).rolling(window=n_rolling).mean().plot(ax=ax)
+    rpol['Reward'].rename('Random Policy').rolling(window=n_rolling).mean().plot(ax=ax)
     plt.title(f'Rolling Means (mem={n_rolling}) by Policy')
     plt.legend()
     fig.savefig(os.path.join(path, 'Figure_2.png'))
@@ -78,6 +83,7 @@ def main():
 
     grd['Reward'].rename(greedy).ewm(alpha=ewmalpha).mean()[n_warmup:].plot()
     egrd['Reward'].rename(eps_greedy).ewm(alpha=ewmalpha).mean()[n_warmup:].plot()
+    rpol['Reward'].rename('Random Policy').ewm(alpha=ewmalpha).mean().plot(ax=ax)    
     plt.title('Exp Smooth Means by Policy')
     plt.legend()
     fig.savefig(os.path.join(path, 'Figure_1.png'))
