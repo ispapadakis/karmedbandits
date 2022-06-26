@@ -89,9 +89,8 @@ def main():
 
     # FIGURE 3: First Iterations
     fig, ax = plt.subplots(figsize=(8, 6))
-    ucb['Action'][:100].plot(ax=ax, style='r-o', linewidth=.25)
-    ucb['Reward'][:100].plot(secondary_y=True,ax=ax)
-    plt.legend()
+    ucb['Action'][:100].plot(ax=ax, style='r-o', linewidth=.25, legend=True)
+    ucb['Reward'][:100].plot(secondary_y=True,ax=ax, legend=True)
     plt.title("First 100 Iterations of UCB Policy")
     fig.savefig(os.path.join(path, 'Figure_3.png'))
     plt.close()
