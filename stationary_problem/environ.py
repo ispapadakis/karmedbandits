@@ -12,6 +12,7 @@ class RLEnviron:
         """
         Initialize Bandits from .csv File
         """
+        self.bandits_file = bandits_file
         self._bandits = []
         for _, row in pd.read_csv(bandits_file).iterrows():
             self.addBandit(Bandit(**row))
@@ -37,6 +38,12 @@ class RLEnviron:
         return len(self._bandits)
 
     def __repr__(self) -> str:
+        """
+        Representation of Class Member
+        """
+        return "RLEnviron(bandits_file='{0.bandits_file}')".format(self)
+
+    def __str__(self) -> str:
         """
         Multiline Representation of Environment
         """
@@ -87,6 +94,7 @@ class Policy:
         if step_size <= 0.0 or step_size > 1.0:
             raise ValueError("step_size is out of range")
         self.env = env
+        self.initial_value = initial_value
         self.Q = np.array([initial_value for _ in range(env.get_size())])
         self.step_size = step_size
 
@@ -113,7 +121,11 @@ class Policy:
         n = 1.0 if self.step_size == 0.0 else 1.0 / self.step_size
         self.step_size = 1.0 / (n + 1.0)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        fmt = "Policy(env={0.env!r},initial_value={0.initial_value},step_size={0.step_size})"
+        return fmt.format(self)
+
+    def __str__(self) -> str:
         return "Random Action Policy"
 
 class EpsilonGreedy(Policy):
@@ -153,9 +165,14 @@ class EpsilonGreedy(Policy):
         prob[opt] = (1.0  - self.epsilon) / len(opt)
         prob = prob / sum(prob) # Assure Sum to Zero
         return np.random.choice(self.env.get_size(), p=prob)
-        
-    def __repr__(self):
-        return "Epsilon Greedy Policy eps={:.3f}".format(self.epsilon)
+
+    def __repr__(self) -> str:
+        fmt = "EpsilonGreedy(epsilon={0.epsilon},env={0.env!r}"
+        fmt += ",initial_value={0.initial_value},step_size={0.step_size})"
+        return fmt.format(self)
+
+    def __str__(self) -> None:
+        return "Epsilon Greedy Policy eps={0.epsilon:.3f}".format(self)
 
 class Greedy(Policy):
     """
@@ -167,7 +184,11 @@ class Greedy(Policy):
         nearopt = np.where(self.Q > max - 1e-12)[0]
         return np.random.choice(nearopt)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        fmt = "Greedy(env={0.env!r},initial_value={0.initial_value},step_size={0.step_size})"
+        return fmt.format(self)
+
+    def __str__(self):
         return "Greedy Policy"
 
 
@@ -200,9 +221,14 @@ class UCB(Policy):
         crit = self.Q.copy()
         crit += self.c_param * np.sqrt(np.log(t)/self.bandit_counts)
         return np.argmax(crit)
+
+    def __repr__(self) -> str:
+        fmt = "UCB(c_param={0.c_param},env={0.env!r},"
+        fmt += "initial_value={0.initial_value},step_size={0.step_size})"
+        return fmt.format(self)
         
-    def __repr__(self):
-        return "UCB Policy({})".format(self.c_param)
+    def __str__(self) -> None:
+        return "UCB Policy({0.c_param})".format(self)
 
 def main():
     path = 'stationary_problem'
@@ -210,6 +236,12 @@ def main():
     rlenv = RLEnviron(os.path.join(path,file))
 
     print(rlenv)
+
+    print("\nTest repr rendering")
+    print(repr(EpsilonGreedy(0.1,rlenv,0.0)))
+    print("\nTest str rendering")
+    print(EpsilonGreedy(0.1,rlenv,0.0))
+    print("\n...\n")
 
     np.random.seed(2022)
     ucb_policy = UCB(0.1, rlenv, 5.0)
