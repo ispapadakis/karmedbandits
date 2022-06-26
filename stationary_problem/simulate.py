@@ -1,10 +1,10 @@
-from environ import Policy, Greedy, EpsilonGreedy, RLEnviron
+from environ import Policy, Greedy, EpsilonGreedy, RLEnviron, UCB
 import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-def simulate_policy(env, policy, n):
+def simulate_policy(policy, n):
     print(policy)
     actions = []
     rewards = []
@@ -14,9 +14,9 @@ def simulate_policy(env, policy, n):
         actions.append(a)
         rewards.append(r)
         Q.append(q)
-    return np.array(actions), np.array(rewards), np.asarray(Q)
+    return np.array(actions), np.array(rewards), np.asarray(Q), policy.bandit_counts
 
-def summary_report(actions, rewards, Q):
+def summary_report(actions, rewards, Q, action_counts):
     print('- Average Reward: {:.3f}'.format(rewards.mean()))
     print(
         '- Final Q-values: [', 
@@ -25,8 +25,8 @@ def summary_report(actions, rewards, Q):
     )
     df = pd.DataFrame({'Action':actions, 'Reward':rewards})
     print('- Action Frequency: ',end='')
-    for t in df['Action'].value_counts().items():
-        print(t, end=' ')
+    for i,n in enumerate(action_counts):
+        print("{}:{}".format(i,n), end=' ')
     print()
     return df
 
@@ -40,31 +40,37 @@ def main():
     print(rlenv.opt_values())
 
     greedy = Greedy(rlenv, 5.0)
-    eps_greedy = EpsilonGreedy(0.01, rlenv, 5.0)
+    eps_greedy = EpsilonGreedy(0.1, rlenv, 5.0)
     rnd_policy = Policy(rlenv, 5.0)
+    ucb_policy = UCB(2.0, rlenv, 5.0)
 
     n_periods = 100000
     n_rolling = 1000
     n_warmup = 1000
-    ewmalpha = 0.001
+    ewmalpha = 0.0001
 
     grd = summary_report(
-        *simulate_policy(rlenv, greedy, n_periods)
+        *simulate_policy(greedy, n_periods)
     )
  
     egrd = summary_report(
-        *simulate_policy(rlenv, eps_greedy, n_periods)
+        *simulate_policy(eps_greedy, n_periods)
     )
 
     rpol = summary_report(
-        *simulate_policy(rlenv, rnd_policy, n_periods)
+        *simulate_policy(rnd_policy, n_periods)
+    )
+
+    ucb = summary_report(
+        *simulate_policy(ucb_policy, n_periods)
     )
 
     # FIGURE 1: EXP SMOOTH GRAPHS
     fig, ax = plt.subplots(figsize=(8, 6))
     grd['Reward'].rename(greedy).ewm(alpha=ewmalpha).mean()[n_warmup:].plot()
     egrd['Reward'].rename(eps_greedy).ewm(alpha=ewmalpha).mean()[n_warmup:].plot()
-    rpol['Reward'].rename('Random Policy').ewm(alpha=ewmalpha).mean().plot(ax=ax)    
+    ucb['Reward'].rename('UCB Policy').ewm(alpha=ewmalpha).mean()[n_warmup:].plot(ax=ax)    
+    rpol['Reward'].rename('Random Policy').ewm(alpha=ewmalpha).mean()[n_warmup:].plot(ax=ax)    
     plt.title('Exp Smooth Means by Policy')
     plt.legend()
     fig.savefig(os.path.join(path, 'Figure_1.png'))
@@ -74,6 +80,7 @@ def main():
     fig, ax = plt.subplots(figsize=(8, 6))
     grd['Reward'].rename(greedy).rolling(window=n_rolling).mean().plot(ax=ax)
     egrd['Reward'].rename(eps_greedy).rolling(window=n_rolling).mean().plot(ax=ax)
+    ucb['Reward'].rename('UCB Policy').rolling(window=n_rolling).mean().plot(ax=ax)    
     rpol['Reward'].rename('Random Policy').rolling(window=n_rolling).mean().plot(ax=ax)
     plt.title(f'Rolling Means (mem={n_rolling}) by Policy')
     plt.legend()
@@ -82,10 +89,10 @@ def main():
 
     # FIGURE 3: First Iterations
     fig, ax = plt.subplots(figsize=(8, 6))
-    grd['Action'][:100].plot(kind='hist', ax=ax)
-    grd['Reward'][:100].plot(secondary_y=True,ax=ax)
+    ucb['Action'][:100].plot(ax=ax, style='r-o', linewidth=.25)
+    ucb['Reward'][:100].plot(secondary_y=True,ax=ax)
     plt.legend()
-    plt.title("First 100 Iterations of Greedy Policy")
+    plt.title("First 100 Iterations of UCB Policy")
     fig.savefig(os.path.join(path, 'Figure_3.png'))
     plt.close()
 

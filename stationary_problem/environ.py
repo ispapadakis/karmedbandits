@@ -90,6 +90,8 @@ class Policy:
         self.Q = np.array([initial_value for _ in range(env.get_size())])
         self.step_size = step_size
 
+        self.bandit_counts = np.zeros(self.env.get_size(), dtype=np.int32)
+
     def select_action(self):
         """
         Select Random Option by Default
@@ -104,6 +106,7 @@ class Policy:
         reward = self.env.k_outcome(action)
         self.q_update(action, reward)
         self.s_update()
+        self.bandit_counts[action] += 1
         return action, reward, self.Q
 
     def s_update(self):
@@ -168,6 +171,39 @@ class Greedy(Policy):
         return "Greedy Policy"
 
 
+class UCB(Policy):
+    """
+    Upper-Confidence-Bound Policy Sub-Class
+    """
+
+    def __init__(
+        self, 
+        c_param: float,
+        env: RLEnviron, 
+        initial_value: float, 
+        step_size: float = 1
+        ) -> None:
+        super().__init__(env, initial_value, step_size)
+
+        if self.env.get_size() < 1:
+            raise RuntimeError("Environment is Empty")
+        if c_param <= 0:
+            raise ValueError("c Parameter Non-Nositive")
+        self.c_param = c_param
+
+    def select_action(self):
+        zero_count = np.where(self.bandit_counts==0)[0]
+        if zero_count.size > 0:
+            return np.random.choice(zero_count)
+
+        t = self.bandit_counts.sum()
+        crit = self.Q.copy()
+        crit += self.c_param * np.sqrt(np.log(t)/self.bandit_counts)
+        return np.argmax(crit)
+        
+    def __repr__(self):
+        return "UCB Policy({})".format(self.c_param)
+
 def main():
     path = 'stationary_problem'
     file = 'bandits.csv'
@@ -175,13 +211,16 @@ def main():
 
     print(rlenv)
 
-    eps_greedy = EpsilonGreedy(0.1, rlenv, 5.0)
+    np.random.seed(2022)
+    ucb_policy = UCB(0.1, rlenv, 5.0)
 
-    print(eps_greedy)
+    print(ucb_policy)
     for i in range(10):
-        action, reward, q = eps_greedy.update()
+        action, reward, q = ucb_policy.update()
         fmt = "Action:{:2d} Reward:{:6.3f} Q:{}"
         print(fmt.format(action, reward, np.round(q,2)))
+
+    print("Bandit Counts = ", ucb_policy.bandit_counts)
 
 
 if __name__ == '__main__':
