@@ -88,7 +88,8 @@ class Policy:
         self, 
         env: RLEnviron, 
         initial_value: float, 
-        step_size: float = 1.0
+        step_size: float = 1.0,
+        step_type: str = 'default'
         ) -> None:
 
         if step_size <= 0.0 or step_size > 1.0:
@@ -97,6 +98,7 @@ class Policy:
         self.initial_value = initial_value
         self.Q = np.array([initial_value for _ in range(env.get_size())])
         self.step_size = step_size
+        self.step_type = step_type
 
         self.bandit_counts = np.zeros(self.env.get_size(), dtype=np.int32)
 
@@ -107,19 +109,20 @@ class Policy:
         return np.random.choice(self.env.get_size())
     
     def q_update(self, k:int, reward:float):
-        self.Q[k] += self.step_size * (reward - self.Q[k])
+        self.Q[k] += self.s_size(k) * (reward - self.Q[k])
 
     def update(self):
         action = self.select_action()
         reward = self.env.k_outcome(action)
-        self.q_update(action, reward)
-        self.s_update()
         self.bandit_counts[action] += 1
+        self.q_update(action, reward)
         return action, reward, self.Q
 
-    def s_update(self):
-        n = 1.0 if self.step_size == 0.0 else 1.0 / self.step_size
-        self.step_size = 1.0 / (n + 1.0)
+    def s_size(self, k:int):
+        if self.step_type == 'constant':
+            return self.step_size
+        else:
+            return self.step_size / self.bandit_counts[k]
 
     def __repr__(self) -> str:
         fmt = "Policy(env={0.env!r},initial_value={0.initial_value},step_size={0.step_size})"
