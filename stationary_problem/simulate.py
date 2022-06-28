@@ -38,7 +38,7 @@ def main():
 
     file = open('stationary_problem/Readme.md', 'w')
 
-    print('# Comparing Greedy and Eps-Greedy Policies\n', file=file)
+    print('# Comparing Policies\n', file=file)
     print('##', rlenv, file=file)
     print("\nOptimal Values:", rlenv.opt_values(), file=file)
 

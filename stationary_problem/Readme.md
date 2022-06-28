@@ -1,4 +1,4 @@
-# Comparing Greedy and Eps-Greedy Policies
+# Comparing Policies
 
 ## RL Environment:
 Bandit(avg_reward = 1.5, std_reward = 0.1)
