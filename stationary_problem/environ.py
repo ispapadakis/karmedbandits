@@ -30,8 +30,9 @@ class RLEnviron:
         Get Index k Bandit
         """
         return self._bandits[k]
-        
-    def get_size(self):
+
+    @property
+    def env_size(self):
         """
         Get Number of Bandits in Enviroment
         """
@@ -96,17 +97,17 @@ class Policy:
             raise ValueError("step_size is out of range")
         self.env = env
         self.initial_value = initial_value
-        self.Q = np.array([initial_value for _ in range(env.get_size())])
+        self.Q = np.array([initial_value for _ in range(env.env_size)])
         self.step_size = step_size
         self.step_type = step_type
 
-        self.bandit_counts = np.zeros(self.env.get_size(), dtype=np.int32)
+        self.bandit_counts = np.zeros(self.env.env_size, dtype=np.int32)
 
     def select_action(self):
         """
         Select Random Option by Default
         """
-        return np.random.choice(self.env.get_size())
+        return np.random.choice(self.env.env_size)
     
     def q_update(self, k:int, reward:float):
         self.Q[k] += self.s_size(k) * (reward - self.Q[k])
@@ -141,33 +142,34 @@ class EpsilonGreedy(Policy):
         epsilon: float,
         env: RLEnviron, 
         initial_value: float, 
-        step_size: float = 1
+        step_size: float = 1.0
         ) -> None:
         super().__init__(env, initial_value, step_size)
 
-        if self.env.get_size() < 1:
+        if self.env.env_size < 1:
             raise RuntimeError("Environment is Empty")
         if epsilon <= 0 or epsilon > 1.0:
             raise ValueError("Epsilon is Out of Range")
 
         self.epsilon = epsilon
 
-        self.default_prob = np.ones(self.env.get_size()) 
-        self.default_prob /= (self.env.get_size() - 1)
+        self.default_prob = np.ones(self.env.env_size) 
+        self.default_prob /= (self.env.env_size - 1)
         self.default_prob *= self.epsilon
 
     def select_action(self):
         max = self.Q.max()
         opt = np.where(self.Q == max)[0]
-        n = self.env.get_size()
-        if n == len(opt):
-            return np.random.choice(self.env.get_size())
+        if self.env.env_size == len(opt):
+            return np.random.choice(self.env.env_size)
         # Probability of Selection for Non Max Actions (Sums to epsilon)
-        prob = np.ones(n) * self.epsilon / (n - len(opt))
+        # Assign this probability by default
+        n_non_max = self.env.env_size - len(opt)
+        prob = np.ones(self.env.env_size) * self.epsilon / n_non_max
         # Probability of Selection for Max Actions (Sums to 1 - epsilon)
         prob[opt] = (1.0  - self.epsilon) / len(opt)
         prob = prob / sum(prob) # Assure Sum to Zero
-        return np.random.choice(self.env.get_size(), p=prob)
+        return np.random.choice(self.env.env_size, p=prob)
 
     def __repr__(self) -> str:
         fmt = "EpsilonGreedy(epsilon={0.epsilon},env={0.env!r}"
@@ -205,11 +207,11 @@ class UCB(Policy):
         c_param: float,
         env: RLEnviron, 
         initial_value: float, 
-        step_size: float = 1
+        step_size: float = 1.0
         ) -> None:
         super().__init__(env, initial_value, step_size)
 
-        if self.env.get_size() < 1:
+        if self.env.env_size < 1:
             raise RuntimeError("Environment is Empty")
         if c_param <= 0:
             raise ValueError("c Parameter Non-Nositive")
@@ -233,6 +235,59 @@ class UCB(Policy):
     def __str__(self) -> None:
         return "UCB Policy({0.c_param})".format(self)
 
+class GradientBandit(Policy):
+    """
+    Gradient Bandit Policy Sub-Class
+
+    Q-Array Holds H-Array Values
+    """
+
+    def __init__(
+        self, 
+        env: RLEnviron, 
+        step_size: float
+        ) -> None:
+        super().__init__(env, initial_value=0.0, step_size=step_size, step_type='constant')
+
+        self.average_reward = 0.0
+        self.nreps = 0
+        self.H = np.ones(self.env.env_size)
+        self.update_probs() # Use Equal Probabilities at Init
+
+    def update_probs(self):
+        e = np.exp(self.H)
+        self.prob = e / e.sum()
+
+    def select_action(self):
+        return np.random.choice(self.env.env_size, p=self.prob)
+
+    def h_update(self, k:int, reward:float):
+        rdiff = reward - self.average_reward
+        self.H -= self.step_size * rdiff * self.prob
+        self.H[k] += self.step_size * rdiff
+
+    def q_update(self, k: int, reward: float):
+        self.Q[k] += (reward - self.Q[k]) / self.bandit_counts[k]
+
+    def update(self):
+        action = self.select_action()
+        reward = self.env.k_outcome(action)
+        self.h_update(action, reward)
+        self.update_probs()
+        self.nreps += 1
+        self.bandit_counts[action] += 1
+        self.q_update(action, reward)
+        self.average_reward +=  (reward - self.average_reward) / self.nreps
+        return action, reward, self.Q
+
+    def __repr__(self) -> str:
+        fmt = "GradientBandit(env={0.env!r},step_size={0.step_size})"
+        return fmt.format(self)
+
+    def __str__(self):
+        return "Gradient Bandit Policy"
+
+
 def main():
     path = 'stationary_problem'
     file = 'bandits.csv'
@@ -246,16 +301,18 @@ def main():
     print(EpsilonGreedy(0.1,rlenv,0.0))
     print("\n...\n")
 
-    np.random.seed(2022)
-    ucb_policy = UCB(0.1, rlenv, 5.0)
+    np.random.seed(22)
+    gb_policy = GradientBandit(rlenv, 0.1)
 
-    print(ucb_policy)
+    print(gb_policy)
+    print(repr(gb_policy))
     for i in range(10):
-        action, reward, q = ucb_policy.update()
-        fmt = "Action:{:2d} Reward:{:6.3f} Q:{}"
-        print(fmt.format(action, reward, np.round(q,2)))
+        action, reward, q = gb_policy.update()
+        fmt = "Action:{:2d} Reward:{:6.3f} Avg Reward:{:6.3f} Q:{}"
+        print(fmt.format(action, reward, gb_policy.average_reward, np.round(q,2)))
 
-    print("Bandit Counts = ", ucb_policy.bandit_counts)
+    print("Bandit Counts = ", gb_policy.bandit_counts)
+    print("Selection Probabilities = ", gb_policy.prob)
 
 
 if __name__ == '__main__':
