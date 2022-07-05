@@ -17,4 +17,8 @@ Exploration effectiveness is measured by how well average bandit rewards come to
 | Gradient Bandit Policy | :two:       |:two:         |
 | Random Action Policy   | :one:       |              |
 
-:white_check_mark: Gradient Bandit Policy appears to offer the best of both worlds in this simulation.
+- :white_check_mark: Gradient Bandit Policy appears to offer the best of both worlds in this simulation.
+
+- UCB Policy has similarly good performance.
+
+- Epsilon-Greedy Policy (with epsilon = 0.1) appears to do more exploration than necessary for this setting.
