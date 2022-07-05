@@ -1,4 +1,4 @@
-from environ import Policy, Greedy, EpsilonGreedy, RLEnviron, UCB
+from environ import Policy, Greedy, EpsilonGreedy, RLEnviron, UCB, GradientBandit
 import os
 import sys
 import numpy as np
@@ -10,7 +10,8 @@ def simulate_policy(policy, n):
     rewards = []
     Q = []
     for _ in range(n):
-        a, r, q = policy.update()
+        a, r = policy.update()
+        q = policy.Q
         actions.append(a)
         rewards.append(r)
         Q.append(q)
@@ -46,6 +47,7 @@ def main():
     eps_greedy = EpsilonGreedy(0.1, rlenv, 5.0)
     rnd_policy = Policy(rlenv, 5.0)
     ucb_policy = UCB(2.0, rlenv, 5.0)
+    gbnd_policy = GradientBandit(rlenv, 0.10)
 
     n_periods = 100000
     n_rolling = 1000
@@ -67,6 +69,11 @@ def main():
         *simulate_policy(ucb_policy, n_periods), file=file
     )
 
+    print('##', gbnd_policy, file=file)
+    gbnd = summary_report(
+        *simulate_policy(gbnd_policy, n_periods), file=file
+    )
+
     print('##', rnd_policy, file=file)
     rpol = summary_report(
         *simulate_policy(rnd_policy, n_periods), file=file
@@ -82,6 +89,7 @@ def main():
     grd['Reward'].rename(greedy).ewm(alpha=ewmalpha).mean()[n_warmup:].plot()
     egrd['Reward'].rename(eps_greedy).ewm(alpha=ewmalpha).mean()[n_warmup:].plot()
     ucb['Reward'].rename('UCB Policy').ewm(alpha=ewmalpha).mean()[n_warmup:].plot(ax=ax)    
+    gbnd['Reward'].rename('Gradient Bandit Policy').ewm(alpha=ewmalpha).mean()[n_warmup:].plot(ax=ax)    
     rpol['Reward'].rename('Random Policy').ewm(alpha=ewmalpha).mean()[n_warmup:].plot(ax=ax)    
     plt.title('Reward Exp Smooth Mean by Policy')
     plt.legend()
@@ -93,6 +101,7 @@ def main():
     grd['Reward'].rename(greedy).rolling(window=n_rolling).mean().plot(ax=ax)
     egrd['Reward'].rename(eps_greedy).rolling(window=n_rolling).mean().plot(ax=ax)
     ucb['Reward'].rename('UCB Policy').rolling(window=n_rolling).mean().plot(ax=ax)    
+    gbnd['Reward'].rename('Gradient Bandit Policy').rolling(window=n_rolling).mean().plot(ax=ax)
     rpol['Reward'].rename('Random Policy').rolling(window=n_rolling).mean().plot(ax=ax)
     plt.title(f'Reward Rolling Mean (mem={n_rolling}) by Policy')
     plt.legend()

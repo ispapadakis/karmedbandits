@@ -90,40 +90,53 @@ class Policy:
         env: RLEnviron, 
         initial_value: float, 
         step_size: float = 1.0,
-        step_type: str = 'default'
+        step_low_lim: float = None
         ) -> None:
 
         if step_size <= 0.0 or step_size > 1.0:
             raise ValueError("step_size is out of range")
+
         self.env = env
+        if self.env.env_size < 1:
+            raise RuntimeError("Environment is Empty")
+
         self.initial_value = initial_value
         self.Q = np.array([initial_value for _ in range(env.env_size)])
         self.step_size = step_size
-        self.step_type = step_type
-
+        self.step_low_lim = step_low_lim
         self.bandit_counts = np.zeros(self.env.env_size, dtype=np.int32)
+        self.prob = np.array([1.0/self.env.env_size for _ in range(self.env.env_size)]) 
 
     def select_action(self):
         """
         Select Random Option by Default
         """
-        return np.random.choice(self.env.env_size)
+        return np.random.choice(self.env.env_size, p=self.prob)
     
     def q_update(self, k:int, reward:float):
         self.Q[k] += self.s_size(k) * (reward - self.Q[k])
 
+    def update_probs(self):
+        """
+        By Default Probabilities of Action Selection Are Kept Equal and Constant
+        This Results in Random Action Policy
+        """
+        pass
+
     def update(self):
+        self.update_probs()
         action = self.select_action()
         reward = self.env.k_outcome(action)
         self.bandit_counts[action] += 1
         self.q_update(action, reward)
-        return action, reward, self.Q
+        return action, reward
 
     def s_size(self, k:int):
-        if self.step_type == 'constant':
-            return self.step_size
+        default_step_size = self.step_size / self.bandit_counts[k]
+        if self.step_low_lim and (default_step_size < self.step_low_lim):
+            return self.step_low_lim
         else:
-            return self.step_size / self.bandit_counts[k]
+            return default_step_size
 
     def __repr__(self) -> str:
         fmt = "Policy(env={0.env!r},initial_value={0.initial_value},step_size={0.step_size})"
@@ -146,30 +159,25 @@ class EpsilonGreedy(Policy):
         ) -> None:
         super().__init__(env, initial_value, step_size)
 
-        if self.env.env_size < 1:
-            raise RuntimeError("Environment is Empty")
         if epsilon <= 0 or epsilon > 1.0:
             raise ValueError("Epsilon is Out of Range")
 
         self.epsilon = epsilon
 
-        self.default_prob = np.ones(self.env.env_size) 
-        self.default_prob /= (self.env.env_size - 1)
-        self.default_prob *= self.epsilon
-
-    def select_action(self):
+    def update_probs(self):
         max = self.Q.max()
         opt = np.where(self.Q == max)[0]
         if self.env.env_size == len(opt):
-            return np.random.choice(self.env.env_size)
+            self.prob = np.array([1.0/self.env.env_size for _ in range(self.env.env_size)])
+            return
         # Probability of Selection for Non Max Actions (Sums to epsilon)
         # Assign this probability by default
         n_non_max = self.env.env_size - len(opt)
         prob = np.ones(self.env.env_size) * self.epsilon / n_non_max
         # Probability of Selection for Max Actions (Sums to 1 - epsilon)
         prob[opt] = (1.0  - self.epsilon) / len(opt)
-        prob = prob / sum(prob) # Assure Sum to Zero
-        return np.random.choice(self.env.env_size, p=prob)
+        prob = prob / prob.sum() # Assure Sum to 1.0
+        self.prob = prob
 
     def __repr__(self) -> str:
         fmt = "EpsilonGreedy(epsilon={0.epsilon},env={0.env!r}"
@@ -184,10 +192,12 @@ class Greedy(Policy):
     Greedy Policy Sub-Class
     """
 
-    def select_action(self):
+    def update_probs(self):
         max = self.Q.max()
         nearopt = np.where(self.Q > max - 1e-12)[0]
-        return np.random.choice(nearopt)
+        prob = np.zeros(self.env.env_size)
+        prob[nearopt] = 1.0 / len(nearopt)
+        self.prob = prob
 
     def __repr__(self) -> str:
         fmt = "Greedy(env={0.env!r},initial_value={0.initial_value},step_size={0.step_size})"
@@ -211,10 +221,8 @@ class UCB(Policy):
         ) -> None:
         super().__init__(env, initial_value, step_size)
 
-        if self.env.env_size < 1:
-            raise RuntimeError("Environment is Empty")
         if c_param <= 0:
-            raise ValueError("c Parameter Non-Nositive")
+            raise ValueError("c Parameter Has to Be Positive")
         self.c_param = c_param
 
     def select_action(self):
@@ -245,40 +253,30 @@ class GradientBandit(Policy):
     def __init__(
         self, 
         env: RLEnviron, 
-        step_size: float
+        h_step_size: float
         ) -> None:
-        super().__init__(env, initial_value=0.0, step_size=step_size, step_type='constant')
+        super().__init__(env, initial_value=0.0)
 
         self.average_reward = 0.0
         self.nreps = 0
         self.H = np.ones(self.env.env_size)
-        self.update_probs() # Use Equal Probabilities at Init
+        self.h_step_size = h_step_size
 
     def update_probs(self):
         e = np.exp(self.H)
         self.prob = e / e.sum()
 
-    def select_action(self):
-        return np.random.choice(self.env.env_size, p=self.prob)
-
     def h_update(self, k:int, reward:float):
         rdiff = reward - self.average_reward
-        self.H -= self.step_size * rdiff * self.prob
-        self.H[k] += self.step_size * rdiff
-
-    def q_update(self, k: int, reward: float):
-        self.Q[k] += (reward - self.Q[k]) / self.bandit_counts[k]
+        self.H -= self.h_step_size * rdiff * self.prob
+        self.H[k] += self.h_step_size * rdiff
 
     def update(self):
-        action = self.select_action()
-        reward = self.env.k_outcome(action)
+        action, reward = super().update()
         self.h_update(action, reward)
-        self.update_probs()
         self.nreps += 1
-        self.bandit_counts[action] += 1
-        self.q_update(action, reward)
         self.average_reward +=  (reward - self.average_reward) / self.nreps
-        return action, reward, self.Q
+        return action, reward
 
     def __repr__(self) -> str:
         fmt = "GradientBandit(env={0.env!r},step_size={0.step_size})"
@@ -303,16 +301,28 @@ def main():
 
     np.random.seed(22)
     gb_policy = GradientBandit(rlenv, 0.1)
-
     print(gb_policy)
     print(repr(gb_policy))
     for i in range(10):
-        action, reward, q = gb_policy.update()
+        action, reward = gb_policy.update()
+        q = gb_policy.Q
         fmt = "Action:{:2d} Reward:{:6.3f} Avg Reward:{:6.3f} Q:{}"
         print(fmt.format(action, reward, gb_policy.average_reward, np.round(q,2)))
 
     print("Bandit Counts = ", gb_policy.bandit_counts)
     print("Selection Probabilities = ", gb_policy.prob)
+
+    ra_policy = Policy(rlenv, 0.1, step_low_lim = 0.001)
+    print(ra_policy)
+    print(repr(ra_policy))
+    for i in range(10):
+        action, reward = ra_policy.update()
+        q = ra_policy.Q
+        fmt = "Action:{:2d} Reward:{:6.3f} Q:{}"
+        print(fmt.format(action, reward, np.round(q,2)))
+
+    print("Bandit Counts = ", ra_policy.bandit_counts)
+    print("Selection Probabilities = ", ra_policy.prob)
 
 
 if __name__ == '__main__':
