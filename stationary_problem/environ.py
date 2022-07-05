@@ -85,6 +85,8 @@ class Policy:
     Policy to Select Actions Given Environment
     """
 
+    nearopt_epsilon = 1e-12
+
     def __init__(
         self, 
         env: RLEnviron, 
@@ -194,7 +196,7 @@ class Greedy(Policy):
 
     def update_probs(self):
         max = self.Q.max()
-        nearopt = np.where(self.Q > max - 1e-12)[0]
+        nearopt = np.where(self.Q > max - self.nearopt_epsilon)[0]
         prob = np.zeros(self.env.env_size)
         prob[nearopt] = 1.0 / len(nearopt)
         self.prob = prob
