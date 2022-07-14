@@ -12,7 +12,7 @@ Exploration effectiveness is measured by how well average bandit rewards come to
 | Policy                 | Exploration | Exploitation |
 | :---                   | :---:       | :---:        |
 | Greedy Policy          | :three:     |:one:         |
-| Epsilon Greedy Policy  | :two:       |:three:       |
+| Epsilon Greedy Policy  | :one:       |:three:       |
 | UCB Policy             | :three:     |:two:         |
 | Gradient Bandit Policy | :two:       |:two:         |
 | Random Action Policy   | :one:       |              |
